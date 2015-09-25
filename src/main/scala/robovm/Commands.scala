@@ -30,18 +30,16 @@ trait Install {
 
   def install(s: State): State = {
     val extracted = Project.extract(s)
+    val key = Keys.compiler in Keys.Robo
 
-    val os = extracted.get(Keys.osInfo in Keys.Robo)
-    val key = Keys.roboCompiler in Keys.Robo
-
-    if (os.exists(_.roboSupported) && extracted.getOpt(key).flatten.isEmpty) {
-      s.log.error("Skipping installation since robovm is not supported on platform")
+    if (extracted.getOpt(key).flatten.isDefined) {
+      s.log.error("Skipping installation since robovm has manual override")
       s
     } else {
       val deps = extracted.get(libraryDependencies in Compile)
       val ovrs = extracted.get(dependencyOverrides in  Compile)
 
-      val (s2, cp) = extracted.runTask(fullClasspath in Compile, s)
+      val (s2, cp) = extracted.runTask(dependencyClasspath in Compile, s)
       val comp = findCompiler(cp) _
       val dist = comp(ovrs.toList).orElse(comp(deps))
 
