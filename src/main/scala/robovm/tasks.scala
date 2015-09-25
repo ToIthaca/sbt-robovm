@@ -44,7 +44,6 @@ trait ProGuard {
     libcp.add(new proguard.ClassPathEntry(robo.get, false))
 
     config.libraryJars = libcp
-    config.verbose = true
     val exec = new proguard.ProGuard(config)
     exec.execute()
     log.info("Finished obfusticating code using proguard")
