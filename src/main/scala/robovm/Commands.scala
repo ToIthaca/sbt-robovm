@@ -51,7 +51,6 @@ trait Install {
       s.log.info(s"Installing robovm compiler stored at ${dist.get}")
 
       val loaded = addToClassLoader(s)(dist.get)
-      val key = Keys.compiler in Keys.Robo
 
       if(loaded.isSuccess) {
         extracted.append(Seq(key := Some(dist.get)) , s2)
