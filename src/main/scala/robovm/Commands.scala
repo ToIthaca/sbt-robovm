@@ -3,6 +3,7 @@ package robovm
 import java.io.File
 import java.net.URLClassLoader
 
+import org.robovm.compiler.config.Config
 import sbt.Keys._
 import sbt._
 
@@ -17,6 +18,7 @@ trait Install {
       case Attributed(file) => file.getName.contains(s"${m.name}-${m.revision}")
     }).map(_.data)
   }
+
 
   def addToClassLoader(s: State)(f: File): Try[Unit] = {
     Try {

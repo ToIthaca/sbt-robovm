@@ -11,6 +11,8 @@ lazy val commonSettings = Seq(
     Resolver.sonatypeRepo("snapshots")
   ),
   libraryDependencies ++= Seq(
+    "org.jboss.shrinkwrap.resolver" % "shrinkwrap-resolver-depchain" % "2.2.0-alpha-2",
+    "org.apache.commons" % "commons-compress" % "1.8.1",
     "org.robovm" % "robovm-dist-compiler" % "1.8.0" % "provided",
     "net.sf.proguard" % "proguard-base" % "5.0"
   )

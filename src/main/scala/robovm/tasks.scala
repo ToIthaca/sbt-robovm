@@ -1,9 +1,98 @@
 package robovm
 
-import java.io.File
+import java.io.{File, FileInputStream, FileOutputStream}
+import java.util.zip.GZIPInputStream
 
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.utils.IOUtils
+import org.jboss.shrinkwrap.resolver.api.MavenResolver
+import org.jboss.shrinkwrap.resolver.api.maven._
 import sbt.Keys._
 import sbt._
+
+import scala.util.{Failure, Try}
+
+trait CompilerInstall {
+
+  type InstallResolver = ConfigurableMavenResolverSystem
+
+  lazy val compilerDist = "org.robovm:robovm-dist:tar.gz"
+  lazy val tempDist = "robovm"
+
+  def offline: InstallResolver = MavenResolver().workOffline()
+
+  def depVersions(deps: Seq[ModuleID]) = {
+    deps
+      .find(m => m.organization == "org.robovm")
+  }
+
+  def resolve(res: Seq[Resolver])(artifact: String): Try[File] = {
+    val rs = offline :: res.filter {
+      case MavenRepository(_, _) => true
+      case _ => false
+    }.map {
+      case MavenRepository(n, r) =>
+        MavenResolver().withRemoteRepo(n, s"$r/", "default")
+    }.toList
+
+    rs.foldLeft(Failure[File](new IllegalStateException("No resolvers to resolve file")): Try[File])( (l, r) => {
+      if(l.isFailure)
+        Try {
+          r.resolve(artifact).withoutTransitivity().asSingleFile()
+        }
+      else
+        l
+    })
+  }
+
+  def unzipDistro(target: File)(tar: File): File = {
+
+    val dir = new File(target.absolutePath, tempDist)
+    dir.mkdir()
+    val unTar = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(tar)))
+    var currentTar = unTar.getNextTarEntry
+
+    while(currentTar != null) {
+      val of = new File(dir, currentTar.getName)
+      if(currentTar.isDirectory) {
+        println(of.getAbsolutePath + "her...")
+        of.mkdirs()
+      } else {
+        of.createNewFile()
+        //of.mkdirs()
+        println(of.getAbsolutePath + "here?")
+        //of.createNewFile()
+        val os = new FileOutputStream(of)
+        IOUtils.copy(unTar, os)
+        os.close()
+      }
+      currentTar = unTar.getNextTarEntry
+    }
+    dir
+  }
+
+  lazy val install = Def.task {
+    val log = streams.value.log
+    val versions = depVersions((libraryDependencies in Compile).value)
+    val platformTarget = (Keys.platformTarget in Keys.Robo).value
+
+    versions.foreach(v => {
+      if(v.revision != platformTarget)
+        log.warn(s"${v.name} is not consistent with platform $platformTarget")
+    })
+
+    log.info(s"Installing robovm compiler $platformTarget")
+    val res = resolve(resolvers.value) _
+    val artifact = s"$compilerDist:$platformTarget"
+    val file = res(artifact)
+
+    if(file.isFailure)
+      sys.error(s"Failed to resolve $artifact")
+
+    log.info(s"Installed robovm compiler $platformTarget")
+    unzipDistro(target.value)(file.get)
+  }
+}
 
 trait ProGuard {
 
@@ -51,7 +140,7 @@ trait ProGuard {
   }
 }
 
-object Tasks extends ProGuard {
+object Tasks extends ProGuard with CompilerInstall {
 
 
   lazy val prepare = Def.taskDyn {
@@ -68,6 +157,7 @@ object Tasks extends ProGuard {
 
 
   lazy val tasks = Seq(
-    Keys.prepare in Keys.Robo <<= prepare
+    Keys.prepare in Keys.Robo <<= prepare,
+    Keys.dist in Keys.Robo <<= install
   )
 }
