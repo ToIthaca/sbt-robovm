@@ -4,12 +4,11 @@ import sbt._
 import sbt.Keys._
 
 object Plugin extends sbt.Plugin {
-
   lazy val iosBuild = Seq(
     Keys.osInfo in Keys.Robo := OSInfo(),
     libraryDependencies += "org.robovm" % "robovm-dist-compiler" % "1.8.0",
     Keys.compiler in Keys.Robo := None,
-    Keys.useProguard in Keys.Robo := false,
+    Keys.useProguard in Keys.Robo := true,
     commands ++= Commands.commands
   ) ++ Tasks.tasks
 }
