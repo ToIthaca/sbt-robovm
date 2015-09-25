@@ -1,6 +1,19 @@
-package sbtrobovm
+package robovm
 
-import org.robovm.compiler.config.Config
+import sbt._
+import sbt.Keys._
+
+object Plugin extends sbt.Plugin {
+
+  lazy val iosBuild = Seq(
+    Keys.osInfo in Keys.Robo := OSInfo(),
+    libraryDependencies += "org.robovm" % "robovm-dist-compiler" % "1.8.0",
+    Keys.compiler in Keys.Robo := None,
+    commands ++= Commands.commands
+  ) ++ Tasks.tasks
+}
+
+/*import org.robovm.compiler.config.Config
 import sbt._
 
 import scala.xml.Elem
@@ -43,3 +56,4 @@ object RobovmPlugin extends Plugin with RobovmUtils {
   val iOSProject = RobovmProjects.iOSProject
   val NativeProject = RobovmProjects.NativeProject
 }
+*/

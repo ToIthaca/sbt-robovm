@@ -1,11 +1,11 @@
-package sbtrobovm
+package robovm
 
-import org.apache.commons.io.FileUtils
-import sbt.Keys._
+//import org.apache.commons.io.FileUtils
+//import sbt.Keys._
 import sbt.{Def, _}
 
-import scala.collection.mutable.ArrayBuffer
-import scala.xml.Elem
+//import scala.collection.mutable.ArrayBuffer
+//import scala.xml.Elem
 
 /**
  * Do not instantiate. Use RobovmPlugin.
@@ -14,7 +14,7 @@ import scala.xml.Elem
  * Date: 29/03/15
  * Time: 12:47
  */
-trait RobovmUtils {
+/*trait RobovmUtils {
 
   val ManagedNatives = config("ManagedNatives")
 
@@ -99,3 +99,4 @@ trait RobovmUtils {
     </libs>
   }
 }
+*/

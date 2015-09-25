@@ -1,6 +1,6 @@
-package sbtrobovm
+package robovm
 
-import java.io.{IOException, StringReader}
+/*import java.io.{IOException, StringReader}
 
 import org.apache.commons.io.FileUtils
 import org.jboss.shrinkwrap.resolver.api.SBTRoboVMResolver
@@ -13,7 +13,7 @@ import org.robovm.libimobiledevice.IDevice
 import sbt.Defaults._
 import sbt.Keys._
 import sbt._
-import sbtrobovm.RobovmPlugin._
+import robovm.RobovmPlugin._
 
 object RobovmProjects {
 
@@ -398,3 +398,4 @@ object RobovmProjects {
     
   }
 }
+*/

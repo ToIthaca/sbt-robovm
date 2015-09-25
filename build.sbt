@@ -1,25 +1,22 @@
-import sbt._
-import Keys._
-import bintray._
+lazy val publishSettings = Seq(
+  name := "sbt-robovm",
+  licenses += ("BSD 3-Clause", url("http://opensource.org/licenses/BSD-3-Clause")),
+  organization := "com.ithaca",
+  version := "0.1-SNAPSHOT"
+)
 
-val roboVersion = "1.6.1-SNAPSHOT"
-
-lazy val sbtRoboVM = (project in file(".")).
-  enablePlugins(BuildInfoPlugin).
-  settings(
-    name := "sbt-robovm",
-    licenses += ("BSD 3-Clause", url("http://opensource.org/licenses/BSD-3-Clause")),
-    organization := "org.roboscala",
-    version := roboVersion,
-    sbtPlugin := true,
-    publishMavenStyle := false,
-    bintrayOrganization := None,
-    bintrayRepository := "sbt-plugins",
-    scalacOptions ++= Seq("-unchecked", "-deprecation", "-Xcheckinit", "-Xfatal-warnings"),
-    javacOptions ++= Seq("-source","6","-target","6"),
-    resolvers ++= {if (roboVersion.contains("-SNAPSHOT")) Seq(Resolver.sonatypeRepo("snapshots")) else Seq()},
-    libraryDependencies += "org.robovm" % "robovm-dist-compiler" % roboVersion,
-    libraryDependencies += "org.robovm" % "robovm-maven-resolver" % roboVersion,
-    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "sbtrobovm"
+lazy val commonSettings = Seq(
+  resolvers ++= Seq(
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots")
+  ),
+  libraryDependencies ++= Seq(
+    "org.robovm" % "robovm-dist-compiler" % "1.8.0" % "provided",
+    "net.sf.proguard" % "proguard-base" % "5.0"
   )
+)
+
+lazy val root = (project in file("."))
+  .settings(sbtPlugin := true)
+  .settings(commonSettings: _*)
+  .settings(publishSettings: _*)
