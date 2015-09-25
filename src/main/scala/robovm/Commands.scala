@@ -32,7 +32,7 @@ trait Install {
     val extracted = Project.extract(s)
 
     val os = extracted.get(Keys.osInfo in Keys.Robo)
-    val key = Keys.compiler in Keys.Robo
+    val key = Keys.roboCompiler in Keys.Robo
 
     if (os.exists(_.roboSupported) && extracted.getOpt(key).flatten.isEmpty) {
       s.log.error("Skipping installation since robovm is not supported on platform")

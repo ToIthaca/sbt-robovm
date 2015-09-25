@@ -8,7 +8,7 @@ object Plugin extends sbt.Plugin {
   lazy val iosBuild = Seq(
     Keys.osInfo in Keys.Robo := OSInfo(),
     libraryDependencies += "org.robovm" % "robovm-dist-compiler" % "1.8.0",
-    Keys.compiler in Keys.Robo := None,
+    Keys.roboCompiler in Keys.Robo := None,
     commands ++= Commands.commands
   ) ++ Tasks.tasks
 }
