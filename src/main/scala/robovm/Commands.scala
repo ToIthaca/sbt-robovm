@@ -10,8 +10,6 @@ import scala.util.Try
 
 trait Install {
 
-  lazy val dir = "extra"
-
   def findCompiler(cp: sbt.Keys.Classpath)(deps: Seq[ModuleID]): Option[File] = {
     deps
       .find(m => m.name == "robovm-dist-compiler" && m.organization == "org.robovm")
