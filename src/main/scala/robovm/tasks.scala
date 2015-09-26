@@ -79,11 +79,7 @@ trait Install {
     }
   }
 
-  def checkInstalled(s: State): Boolean = {
-    Try {
-      Class.forName("org.robovm.compiler.AppCompiler")
-    }.isSuccess
-  }
+  def checkInstalled(s: State): Boolean = Try { Class.forName("org.robovm.compiler.AppCompiler") }.isSuccess
 
   lazy val install = Def.task {
     val s = state.value
