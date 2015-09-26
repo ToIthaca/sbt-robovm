@@ -13,9 +13,7 @@ object Plugin extends sbt.Plugin {
     exportJars := true
   )  ++ Tasks.tasks(Keys.iOS)
 
-  lazy val iosBuild = base(Keys.iOS) ++ Seq(
-    libraryDependencies += "org.robovm" % "robovm-rt" % "1.8.0"
-  )
+  lazy val iosBuild = base(Keys.iOS)
 }
 
 /*import org.robovm.compiler.config.Config
