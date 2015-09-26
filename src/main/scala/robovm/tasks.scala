@@ -129,9 +129,14 @@ trait ProGuard extends Install {
     new proguard.ClassPathEntry(inOut._1, false),
     new proguard.ClassPathEntry(inOut._2, true)
   )
-  def asClasspath(fs: List[File]): proguard.ClassPath = {
+  def asClasspath(log: Logger)(fs: List[File], targetDir: File): proguard.ClassPath = {
     val cp = new proguard.ClassPath
-    val ofs = fs.map(f => new File(f.getAbsolutePath + ".pro"))
+
+    val ofs = fs.map(f => {
+      val nf = new File(s"$targetDir/${f.getName}")
+      log.debug(s"Proguard file from ${f.absolutePath} to ${f.absolutePath}")
+      nf
+    })
     fs.zip(ofs).flatMap(asInputOutput).zipWithIndex.foreach {
       case (entry, idx) => cp.add(idx, entry)
     }
@@ -144,6 +149,7 @@ trait ProGuard extends Install {
     val target = (Keys.platformTarget in  Keys.Robo).value
     val roboCompiler = compilerJar(robo, target)
     val rdeps = roboDeps((libraryDependencies in Compile).value)
+    val s = state.value
 
     val file = baseDirectory.value / settingsFile
     log.info(s"Using proguard version ${proguard.ProGuard.VERSION} with existing settings ${file.getAbsolutePath}")
@@ -152,19 +158,25 @@ trait ProGuard extends Install {
     val config = new proguard.Configuration
     val configParser = new proguard.ConfigurationParser(file, System.getProperties)
     configParser.parse(config)
+
     //TODO: Use rdeps to be more robust
-    config.programJars = asClasspath(cps.toList.filter(f => !f.getAbsolutePath.contains("robovm")))
+
+    val proguardDir = new File(robo, "proguard")
+    IO.createDirectory(proguardDir)
+
+    config.programJars = asClasspath(log)(cps.toList.filter(f => !f.getAbsolutePath.contains("robovm")), proguardDir)
 
     val libcp = new proguard.ClassPath
     libcp.add(new proguard.ClassPathEntry(new java.io.File(System.getProperty("java.home")), false))
 
     providedJars(robo, target)(rdeps).foreach(j => {
-      log.debug(s"Adding provided jar ${j.absolutePath}")
+      log.debug(s"Adding robovm provided jar to skip obfustication${j.absolutePath}")
       libcp.add(new proguard.ClassPathEntry(j, false))
     })
 
     config.libraryJars = libcp
     val exec = new proguard.ProGuard(config)
+    log.info(s"Starting proguard obfustication")
     exec.execute()
     log.info("Finished obfusticating code using proguard")
     file
