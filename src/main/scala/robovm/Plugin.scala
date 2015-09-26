@@ -5,16 +5,17 @@ import sbt.Keys._
 
 object Plugin extends sbt.Plugin {
 
-  private[this] lazy val base = Seq(
+  private[this] def base(config: Configuration) = Seq(
     Keys.osInfo in Keys.Robo := OSInfo(),
     Keys.compiler in Keys.Robo := None,
-    Keys.useProguard in Keys.Robo := true,
-    Keys.platformTarget in Keys.Robo := "1.8"
-  )
+    Keys.useProguard in config := true,
+    Keys.platformTarget in Keys.Robo := "1.8",
+    exportJars := true
+  )  ++ Tasks.tasks(Keys.iOS)
 
-  lazy val iosBuild = base ++ Seq(
-    libraryDependencies += "org.robovm" % "robovm-dist-compiler" % "1.8.0" % "provided"
-  ) ++ Tasks.tasks
+  lazy val iosBuild = base(Keys.iOS) ++ Seq(
+    libraryDependencies += "org.robovm" % "robovm-rt" % "1.8.0"
+  )
 }
 
 /*import org.robovm.compiler.config.Config

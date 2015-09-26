@@ -45,10 +45,12 @@ trait Install {
         l
     })
   }
+  
+  def distroLocation(target: File): File = new File(target.absolutePath, tempDist)
 
   def unzipDistro(log: Logger)(target: File, tar: File): File = {
 
-    val dir = new File(target.absolutePath, tempDist)
+    val dir = distroLocation(target)
     IO.createDirectory(dir)
     val unTar = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(tar)))
     var currentTar = unTar.getNextTarEntry
@@ -69,13 +71,18 @@ trait Install {
 
   def addToClassLoader(s: State)(f: File): Try[Unit] = {
     Try {
-      println(f.absolutePath)
       val cl = s.configuration.provider.scalaProvider.launcher.topLoader.asInstanceOf[URLClassLoader]
       val method = cl.getClass.getDeclaredMethod("addURL", classOf[URL])
       method.setAccessible(true)
       method.invoke(cl, f.toURI.toURL)
       method.setAccessible(false)
     }
+  }
+
+  def checkInstalled(s: State): Boolean = {
+    Try {
+      Class.forName("org.robovm.compiler.AppCompiler")
+    }.isSuccess
   }
 
   lazy val install = Def.task {
@@ -85,23 +92,28 @@ trait Install {
     val platformTarget = (Keys.platformTarget in Keys.Robo).value
 
     versions.foreach(v => {
-      if(v.revision != platformTarget)
+      if (v.revision != platformTarget)
         log.warn(s"${v.name} is not consistent with platform $platformTarget")
     })
 
-    log.info(s"Installing robovm compiler $platformTarget")
-    val res = resolve(resolvers.value) _
-    val artifact = s"$compilerDist:$platformTarget"
-    val file = res(artifact)
+    if (!checkInstalled(s)) {
+      log.info(s"Installing robovm compiler $platformTarget")
+      val res = resolve(resolvers.value) _
+      val artifact = s"$compilerDist:$platformTarget"
+      val file = res(artifact)
 
-    if(file.isFailure)
-      sys.error(s"Failed to resolve $artifact")
+      if (file.isFailure)
+        sys.error(s"Failed to resolve $artifact")
 
-    log.info(s"Installed robovm compiler $platformTarget")
-    val distro = unzipDistro(log)(target.value, file.get)
-    val compiler = compilerJar(distro, platformTarget)
-    addToClassLoader(s)(compiler)
-    distro
+      log.info(s"Installed robovm compiler $platformTarget")
+      val distro = unzipDistro(log)(target.value, file.get)
+      val compiler = compilerJar(distro, platformTarget)
+      addToClassLoader(s)(compiler)
+      distro
+    } else {
+      log.info("Already installed compiler")
+      distroLocation(target.value)
+    }
   }
 
   def compilerJar(installDir: File, target: String): File = {
@@ -129,7 +141,7 @@ trait ProGuard extends Install {
     new proguard.ClassPathEntry(inOut._1, false),
     new proguard.ClassPathEntry(inOut._2, true)
   )
-  def asClasspath(log: Logger)(fs: List[File], targetDir: File): proguard.ClassPath = {
+  def asClasspath(log: Logger)(fs: List[File], targetDir: File): (proguard.ClassPath, Seq[File]) = {
     val cp = new proguard.ClassPath
 
     val ofs = fs.map(f => {
@@ -140,7 +152,7 @@ trait ProGuard extends Install {
     fs.zip(ofs).flatMap(asInputOutput).zipWithIndex.foreach {
       case (entry, idx) => cp.add(idx, entry)
     }
-    cp
+    cp -> ofs
   }
 
   lazy val proGuard = Def.task {
@@ -149,7 +161,6 @@ trait ProGuard extends Install {
     val target = (Keys.platformTarget in  Keys.Robo).value
     val roboCompiler = compilerJar(robo, target)
     val rdeps = roboDeps((libraryDependencies in Compile).value)
-    val s = state.value
 
     val file = baseDirectory.value / settingsFile
     log.info(s"Using proguard version ${proguard.ProGuard.VERSION} with existing settings ${file.getAbsolutePath}")
@@ -164,13 +175,14 @@ trait ProGuard extends Install {
     val proguardDir = new File(robo, "proguard")
     IO.createDirectory(proguardDir)
 
-    config.programJars = asClasspath(log)(cps.toList.filter(f => !f.getAbsolutePath.contains("robovm")), proguardDir)
+    val (pcp, fs) = asClasspath(log)(cps.toList.filter(f => !f.getAbsolutePath.contains("robovm")), proguardDir)
+    config.programJars = pcp
 
     val libcp = new proguard.ClassPath
     libcp.add(new proguard.ClassPathEntry(new java.io.File(System.getProperty("java.home")), false))
 
     providedJars(robo, target)(rdeps).foreach(j => {
-      log.debug(s"Adding robovm provided jar to skip obfustication${j.absolutePath}")
+      log.debug(s"Adding robovm provided jar to skip obfustication ${j.absolutePath}")
       libcp.add(new proguard.ClassPathEntry(j, false))
     })
 
@@ -179,7 +191,7 @@ trait ProGuard extends Install {
     log.info(s"Starting proguard obfustication")
     exec.execute()
     log.info("Finished obfusticating code using proguard")
-    file
+    fs
   }
 }
 
@@ -193,22 +205,22 @@ trait Bundle {
 object Tasks extends ProGuard with Bundle {
 
 
-  lazy val prepare = Def.taskDyn {
+  def prepare(config: Configuration) = Def.taskDyn {
     val log = streams.value.log
     log.info("Preparing project for robovm compilation")
     val comp = (fullClasspath in Runtime).value.files
 
-    if((Keys.useProguard in Keys.Robo).value) {
+    if((Keys.useProguard in config).value)
       proGuard
-    } else {
-      Def.task(comp(0))
+    else {
+      Def.task(comp)
     }
   }
 
 
-  lazy val tasks = Seq(
-    Keys.prepare in Keys.Robo <<= prepare,
+  private[robovm] def tasks(config: Configuration) = Seq(
     Keys.dist in Keys.Robo <<= install,
-    Keys.bundle in  Keys.Robo <<= bundle
+    Keys.bundle in  config <<= bundle,
+    Keys.prepare in config <<= prepare(config)
   )
 }
