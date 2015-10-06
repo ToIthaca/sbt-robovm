@@ -10,7 +10,9 @@ object Plugin extends sbt.Plugin {
     Keys.compiler in Keys.Robo := None,
     Keys.useProguard in config := true,
     Keys.platformTarget in Keys.Robo := "1.8",
-    exportJars := true
+    exportJars := true,
+    Keys.applicationMain in config := None,
+    Keys.applicationName in config := None
   )  ++ Tasks.tasks(Keys.iOS)
 
   lazy val iosBuild = base(Keys.iOS)

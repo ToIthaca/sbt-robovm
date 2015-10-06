@@ -13,6 +13,11 @@ object Keys {
   val dist = taskKey[File]("Installs robovm compiler")
   val prepare = taskKey[Seq[File]]("Prepares the bundle of jars and resources to be compiled by robovm")
   val bundle = taskKey[String]("Bundles the jar ready")
+
+  val applicationMain = settingKey[Option[String]]("The main class which is used to bootstrap the application")
+  val applicationName = settingKey[Option[String]]("Name of the application. Defaults to the class name of the bootstrap")
+  val roboXml = taskKey[File]("robo xml config")
+  val devices = taskKey[List[String]]("devices")
   
   val useProguard = settingKey[Boolean]("")
 }

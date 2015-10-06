@@ -258,7 +258,7 @@ object RobovmProjects {
 
     private def simulatorArchitectureSetting(scope:Scope) = Def.setting[Array[Arch]]{
       Array(if((robovmTarget64bit in scope).value)Arch.x86_64 else Arch.x86)
-    }
+    }ƒdev
 
     def buildSimulatorTask(scope:Scope) = Def.task[(Config, AppCompiler)]{
       buildTask(

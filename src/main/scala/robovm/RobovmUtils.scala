@@ -19,7 +19,7 @@ import sbt.{Def, _}
   val ManagedNatives = config("ManagedNatives")
 
   /**
-   * Creates task that produces native library files from dependencies that have RoboVMNativesConfiguration.
+   * Creates task that produces native library files ƒom dependencies that have RoboVMNativesConfiguration.
    * Whether or not a file is indeed a native library is decided by checking the extension.
    *
    * Found .jar files are extracted and searched recursively.

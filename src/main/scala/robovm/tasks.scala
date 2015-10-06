@@ -9,10 +9,13 @@ import org.apache.commons.compress.utils.IOUtils
 import org.jboss.shrinkwrap.resolver.api.MavenResolver
 import org.jboss.shrinkwrap.resolver.api.maven._
 import org.robovm.compiler.AppCompiler
+import org.robovm.compiler.config.{Arch, OS, Config}
+import org.robovm.compiler.target.ios.DeviceType
 import sbt.Keys._
 import sbt._
 
 import scala.util.{Failure, Try}
+import scala.xml.Elem
 
 trait Install {
 
@@ -70,13 +73,24 @@ trait Install {
   }
 
   def addToClassLoader(s: State)(f: File): Try[Unit] = {
-    Try {
-      val cl = s.configuration.provider.scalaProvider.launcher.topLoader.asInstanceOf[URLClassLoader]
-      val method = cl.getClass.getDeclaredMethod("addURL", classOf[URL])
+    val r = Try {
+      val actualCl = s.configuration.provider.scalaProvider.launcher.topLoader
+
+      //sbt has a custom loader to filter certain jars which isn't on the classpath
+      val cl = if(actualCl.getClass.getName.contains("BootFilteredLoader"))
+        actualCl.getParent.asInstanceOf[URLClassLoader]
+      else
+        actualCl.asInstanceOf[URLClassLoader]
+
+      val method = classOf[URLClassLoader].getDeclaredMethod("addURL", classOf[URL])
       method.setAccessible(true)
       method.invoke(cl, f.toURI.toURL)
       method.setAccessible(false)
     }
+
+    if(r.isFailure)
+      s.log.error(s"Unable to add ${f.getAbsolutePath} to the classpath because of ${r.failed.get}")
+    r
   }
 
   def checkInstalled(s: State): Boolean = Try { Class.forName("org.robovm.compiler.AppCompiler") }.isSuccess
@@ -191,14 +205,57 @@ trait ProGuard extends Install {
   }
 }
 
+import scala.collection.JavaConversions._
+
+trait Robovm {
+  lazy val robovmConfig = "robovm.xml"
+
+  def makeXml(os: OS, arch: Arch, app: String, mainClass: String, jars: Set[String]): Elem = {
+    <config>
+      <os>{os}</os>
+      <arch>{arch}</arch>
+      <executableName>{app}</executableName>
+      <mainClass>{mainClass}</mainClass>
+      <classpath>
+        {jars.map(e => <classpathEntry>{e}</classpathEntry>)}
+      </classpath>
+    </config>
+  }
+
+  def roboXml(config: Configuration) = Def.task {
+    val log = streams.value.log
+    val main = (Keys.applicationMain in config).value.orElse((selectMainClass in Compile).value)
+    val robo = (Keys.dist in Keys.Robo).value
+    val s = state.value
+
+    if(main.isEmpty)
+      sys.error("Unable to find bootstrap class")
+
+    log.info(s"Using ${main.get} as the bootstrap")
+
+    val f = new File(s"$robo/$robovmConfig")
+    if(f.exists())
+      IO.delete(f)
+    f.createNewFile()
+    s.locked(f)(IO.write(f, makeXml(OS.ios, Arch.x86, "myApp", main.get, Set()).toString()))
+    f
+  }
+
+  def devices(config: Configuration) = Def.task {
+    val robo = (Keys.dist in Keys.Robo).value
+    DeviceType.listDeviceTypes().toList.map(_.getSimpleDeviceTypeId)
+  }
+}
+
 trait Bundle {
   lazy val bundle = Def.task {
     println(new AppCompiler(null))
+    val cb = new Config.Builder
     "asd"
   }
 }
 
-object Tasks extends ProGuard with Bundle {
+object Tasks extends ProGuard with Bundle with Robovm {
 
 
   def prepare(config: Configuration) = Def.taskDyn {
@@ -217,6 +274,8 @@ object Tasks extends ProGuard with Bundle {
   private[robovm] def tasks(config: Configuration) = Seq(
     Keys.dist in Keys.Robo <<= install,
     Keys.bundle in  config <<= bundle,
-    Keys.prepare in config <<= prepare(config)
+    Keys.prepare in config <<= prepare(config),
+    Keys.roboXml in config <<= roboXml(config),
+    Keys.devices in config <<= devices(config)
   )
 }
